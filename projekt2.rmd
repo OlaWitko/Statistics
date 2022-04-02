@@ -1,0 +1,262 @@
+---
+title: "projekt2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Wprowadzenie
+
+Wybranym przeze mnie zbiorem danych jest baza danych przedstawiająca zetsawienie 20 tysięcy gier z aplikacji szachowej z róznymi atrybutami (np. rankingi graczy, czas rozpoczęcia i zakończenia partii, liczbę ruchów, victory_status, opening_name).
+
+W tym projekcie spróbuję znaleźć odpowiedzi na pytania mogące się nasuwać w trakcie poszukiwania sposobów na skuteczniejszą strategię i taktykę polepszania swoich statystyk, rankingów i wyników w grze w szachy na platformach internetowych.
+
+```{r}
+gry <- read.csv(file = "C:/Users/User/Documents/games.csv")
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(wesanderson)
+gry$created_at <- gry$created_at/1000
+gry$created_at <- as_datetime(gry$created_at)
+gry$last_move_at <- gry$last_move_at/1000
+gry$last_move_at <- as_datetime(gry$last_move_at)
+```
+
+Powyżej wczytuję potrzebne do późniejszej analizy biblioteki oraz zamieszczam wstępne przekształcenia mojej bazy danych - zmieniam format daty i godziny.
+
+## Problem badawczy 
+Jakie debiuty są najskuteczniejsze dla danych przedziałów rankingowych?
+
+```{r}
+max(gry$white_rating)
+max(gry$black_rating)
+min(gry$white_rating)
+min(gry$black_rating)
+```
+
+
+W celu zwiększenia czytelności analizy i wykresów dzielę badane dane na 4 podgrupy rankingowe: 750-1250,1250-1750,1750-2250,2250-2750
+
+```{r}
+grupa1 <- gry %>%
+  filter(white_rating %in% c(750:1250), black_rating %in% c(750:1250)) %>%
+  select(id, opening_name) %>%
+  group_by(opening_name) %>%
+  summarize(liczbaRozp = length(id))%>%
+  arrange(desc(liczbaRozp)) %>%
+  select(opening_name, liczbaRozp) %>%
+  filter(liczbaRozp > 20)
+grupa2 <- gry %>%
+  filter(white_rating %in% c(1250:1750), black_rating %in% c(1250:1750)) %>%
+  select(id, opening_name) %>%
+  group_by(opening_name) %>%
+  summarize(liczbaRozp = length(id))%>%
+  arrange(desc(liczbaRozp)) %>%
+  select(opening_name, liczbaRozp) %>%
+  filter(liczbaRozp > 150)
+grupa3 <- gry %>%
+  filter(white_rating %in% c(1750:2250), black_rating %in% c(1750:2250)) %>%
+  select(id, opening_name) %>%
+  group_by(opening_name) %>%
+  summarize(liczbaRozp = length(id))%>%
+  arrange(desc(liczbaRozp)) %>%
+  select(opening_name, liczbaRozp) %>%
+  filter(liczbaRozp > 40)
+grupa4 <- gry %>%
+  filter(white_rating %in% c(2250:2750), black_rating %in% c(2250:2750)) %>%
+  select(id, opening_name) %>%
+  group_by(opening_name) %>%
+  summarize(liczbaRozp = length(id))%>%
+  arrange(desc(liczbaRozp)) %>%
+  select(opening_name, liczbaRozp) %>%
+  filter(liczbaRozp > 1)
+```
+
+I dla każdej podgrupy ukazuję na wykresie najpopularniejsze rozpoczęcia partii wraz z liczbą ich rozegrań:
+
+```{r}
+ggplot(grupa1, aes(x=opening_name, y = liczbaRozp)) +
+  geom_bar(stat = "identity", fill="yellow") +
+  theme(axis.text.x = element_text(size = 3))
+ggplot(grupa2, aes(x=opening_name, y = liczbaRozp)) +
+  geom_bar(stat = "identity", fill="yellow") +
+  theme(axis.text.x = element_text(size = 3))
+ggplot(grupa3, aes(x=opening_name, y = liczbaRozp)) +
+  geom_bar(stat = "identity", fill="yellow") +
+  theme(axis.text.x = element_text(size = 3))
+ggplot(grupa4, aes(x=opening_name, y = liczbaRozp)) +
+  geom_bar(stat = "identity", fill="yellow") +
+  theme(axis.text.x = element_text(size = 3))
+```
+
+Z powyższego zestawienia gracze o różnych poziomach gry mogą się dowiedzieć dla jakich przeciwników jakie zagrania są najbardziej przewidywalne, czym mogą ewentualnie próbować zaskoczyć swoich oponentów. 
+W celu zwiększenia skuteczności swojej gry należałoby starannie przestudiować debiuty pojawiające się w powyższym zestawieniu i rozważyć warianty rozwinięcia gry środkowej.
+Najczęściej pojawia się obrona sycylijska oraz różne warianty Queen's Pawn opening zatem opanowanie tych elementów wydaje się nieodzowne do rozgrywania większości partii na tej platformie.
+
+## 2 Problem badawczy 
+Jakie debiuty są najczęściej grane o różnych porach dnia?
+
+Podobnie jak przy poprzednim problemie dzielę dane tym razem na 6 przedziałów czasowych:
+
+```{r}
+gr1 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=0, hour(created_at)<4) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 42)
+gr2 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=4, hour(created_at)<8) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 26)
+gr3 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=8, hour(created_at)<12) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 40)
+gr4 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=12, hour(created_at)<16) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 47)
+gr5 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=16, hour(created_at)<20) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 70)
+gr6 <- gry %>%
+  select(id, opening_name, created_at) %>%
+  filter(hour(created_at)>=20) %>%
+  group_by(opening_name) %>%
+  summarize(iloscZagran = length(id)) %>%
+  arrange(desc(iloscZagran)) %>%
+  filter(iloscZagran > 56)
+ggplot(gr1, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+ggplot(gr2, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+ggplot(gr3, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+ggplot(gr4, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+ggplot(gr5, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+ggplot(gr6, aes(x=opening_name, y = iloscZagran)) +
+  geom_bar(stat = "identity", fill="blue") +
+  theme(axis.text.x = element_text(size = 4))
+```
+
+Z powyższych wykresów podobnie jak z tych w poprzednim podpunkcie możemy odczytać o której porze dnia na jakie debiuty możemy się nastawiać oraz możemy róznież spekulować jakim debiutem kiedy możemy zaskoczyć przeciwnika. 
+Tutaj ponownie najczęstszym elementem jest wariant sycylijski, który przodował już w poprzednim zestawieniu więc ponownie można to potraktować jako element konieczny do opanowania.
+
+## 3 
+Procent remisowanych partii - zależność od pory dnia:
+
+```{r}
+gg <- gry
+gg$created_at <- hour(gg$created_at)
+
+h <- gg%>%
+  select(id, created_at) %>%
+  group_by(created_at) %>%
+  summarize(liczbaWszystkich = length(id))
+h
+g <- gg %>%
+  select(id, created_at, victory_status, white_rating, black_rating) %>%
+  mutate(roznicaRankingu = abs(white_rating - black_rating)) %>%
+  filter(victory_status == "draw") %>%
+  select(id, created_at, victory_status, roznicaRankingu) %>%
+  group_by(created_at) %>%
+  summarize(liczbaRemisow = length(id), rank2 = mean(roznicaRankingu)) %>%
+  mutate(procRemisow = liczbaRemisow/h$liczbaWszystkich)
+
+ggplot(g, aes(x = created_at, y = procRemisow , size = rank2))+
+      geom_point()
+```
+
+Aby pokazać zależność remisowanych partii od pory dnia, grupuję zremisowane partie względem godziny ich rozpoczęcia.
+Na wykresie na osi X widnieje przedział czasowy dnia, na osi Y odsetek partii zremisowanych, a wielkości kropek są zależne od uśrednionej różnicy rankingów graczy, pomiędzy którymi partia została zremisowana. Uznałam to za wartościowy akcent w tym wykresie - w końcu z racjonalnego punktu widzenia partia zakończona remisem pomiędzy dwoma graczami o podobnych rankingach (mała kropka) jest znacznie bardziej prawdopodobny niż między takimi o znaczącej różnicy w wysokości rankingów. Jednak wbrew intuicji, jak widzimy na wykresie kropki mniejsze wcale nie mają przeważającej przewagi nad większymi. Gracze z rankingami zazwyczaj przewyższającymi te swoich przeciwników powinni wziąć sobie takie dane do serca i nie dawać się zwieść uspokajającym pozorom w postaci niższego rankingu przeciwnika.
+
+
+## 4 Problem badaczy 
+Wartość bezwzględna różnicy między rankingami i jej zależność od ilości ruchów:
+
+```{r}
+dane5 <- gry %>%
+  select(id, turns, white_rating, black_rating) %>%
+  mutate(roznicaRank = abs(white_rating - black_rating)) %>%
+  group_by(roznicaRank) %>%
+  summarize(sr = mean(turns)) 
+danee <- dane5 %>%
+  select(roznicaRank, sr)
+ggplot(danee, aes(x = roznicaRank))  +
+  geom_histogram()
+```
+
+Jak widzimy po wykresie, ciężko się doszukiwać zależności pomiędzy tymi dwoma parametrami - jakakolwiek tendencja (tutaj spadkowa) jest widoczna dopiero dla różnic w rankingach graczy o wartości bezwzględnej bliskiej 1000, co jest wartością raczej ekstremalną i średnia ilość ruchów dla takiego wypadku jest najprawdopodobniej wypadkową przypadków kiedy 1) gracz po ujrzeniu rankingu przeciwnika od razu poddał partię lub 2) gracz początkujący na aplikacji z niepozornym rankingiem okazuje się zagorzałym przeciwnikiem, ponieważ założył konto na platformie dopiero po latach praktyki poza nią.
+
+## 5 Problem badawczy 
+Zależność między porą dnia a wygraną gracza z mniejszym rankingiem:
+
+```{r}
+dane6 <- gry %>%
+  select(id, winner, white_rating, black_rating, created_at)
+dane6$created_at <- hour(dane6$created_at)
+dane61 <- dane6 %>%
+  filter(winner == "white", white_rating < black_rating)%>%
+  select(id, created_at)  %>%
+  group_by(created_at) %>%
+  summarize(iloscGier = length(id))
+dane62 <- dane6 %>%
+  filter(winner == "black", black_rating < white_rating) %>%
+  select(id, created_at)  %>%
+  group_by(created_at) %>%
+  summarize(iloscGier = length(id))
+
+dane6c <- data.frame("godziny" = dane61$created_at,
+                     "procentGier" = (dane61$iloscGier + dane62$iloscGier)/h$liczbaWszystkich)
+dane6c
+ggplot(dane6c, aes(x = godziny, y = procentGier, col = "blue")) +
+  geom_line(size = 1.5)
+```
+
+Z powyższego wykresu największą korzyść mogliby odnieść gracze, którym zależy na szybkim podniesieniu swojego rankingu. 
+Wynika z niego, że największy procent porażek bardziej doświadczonych graczy przypada na godziny wczesnoporanne - 7/8. Możliwe, że takie statystyki powodują zapaleni gracze, którzy zarywają noce na rzecz rozrywki gry w szachy i w takim przedziale czasowym są już zmęczeni, albo też gracze, którzy zaczynają swój dzień od partii w szachy i nie do końca rozbudzeni dają się zaskoczyć graczom o niższych rankingach.
+
+## 6 Problem badawczy
+Liczba ruchów od rozegranego debiutu (wynika z tego który jest najskuteczniejszy czy który najryzykowniejszy?) - dla 10 najpopularniejszych debiutów
+
+
+```{r}
+dane7 <- gry %>%
+  select(id, turns, opening_name) %>%
+  group_by(opening_name) %>%
+  summarize(iloscRozegran = length(id), srRuchow = mean(turns)) %>%
+  arrange(desc(iloscRozegran)) %>%
+  filter(iloscRozegran > 250)
+dane7
+ggplot(dane7, aes(x=opening_name, y = srRuchow)) +
+  geom_bar(stat = "identity", fill="yellow") +
+  theme(axis.text.x = element_text(size = 2))
+```
+
+Niestety nie możemy wyciągnąć żadnych wniosków w aspekcie zależności pomiędzy rozgrywanym wariantem a długością partii. Na ten element najwyraźniej składa się znacznie więcej składowych, które zostały omówione w poprzednich częściach projektu.

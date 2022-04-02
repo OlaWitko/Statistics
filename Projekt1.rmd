@@ -1,0 +1,305 @@
+---
+title: "Badanie zbioru danych dot. gospodarstw domowych z 2005 roku "
+author: "Sebastian Sukiennik"
+date: "1/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Podpunkt 1
+
+## zadanie 1.3
+ W poniższym zadaniu tworzę dataframe do którego dodałem kolumny "wzrost" i "waga" używając funkcji sample. Następnie utworzyłem wektor z imionami i dodałem go jako nazwy wierzy we wcześniejszym dataframie. Na koniec obliczyłem BMI.
+```{r}
+osoby <- data.frame("wzrost" = sample(130:200, 7),
+                    "waga" = sample(40:110, 7))
+imiona <- c("Kacper", "Melchior", "Jan", "Andrzej", "Tomasz", "Grzegorz", "Kamila")
+rownames(osoby) <- imiona
+
+BMI <- osoby$waga/(osoby$wzrost/100)^2
+```
+
+Osoby których BMI przyjmuje wartosci wieksze niz 30: 
+```{r echo=FALSE}
+osoby[BMI > 30, ]
+```
+
+Liczba osób z BMI większym niż 25: 
+```{r}
+sum(BMI > 25)
+```
+
+
+## zadanie 1.4
+
+```{r}
+help(mtcars)
+str(mtcars)
+```
+
+Plik mtcars zawiera listę 32 samochodów wraz z ich danymi (11 cech), m.in. średnie spaleni, czas na ćwierć mili, liczbę cylindrów, moc itp. Wszystkie kolumny mają typ danych numeryczne. 
+
+
+```{r}
+help(Orange)
+str(Orange)
+```
+
+Plik Orange zawiera dane dotyczące 35 drzew pomarańczy, dataframe składa się z trzech kolumn gdzie pierwsza kolumna
+jest wktorem zmiennych kategorycznych (1 do 5), odpowiadających średnicy przekroju danego drzewa. Kolumna "Age" zawiera liczbę dni "życia" drzewa liczoną od dnia 1968/12/31. Ostatnia kolumna "circumference" jest wektorem numerycznym obwodu pnia drzewa mierzoną prawdopodbonie na wysokości piersi mierzącego.
+
+  Auta posiadające wyłącznie 6 cylindrów:
+  
+```{r echo=FALSE}
+mtcars[mtcars$cyl == 6, ]
+
+mean(mtcars[mtcars$mpg < 20, "hp"])
+hist(Orange$circumference)
+```
+
+## zadanie 1.7
+Utworzyłem zmienną lista która zawiera wektor palenie o typie danych boolean, w której przechowywane są informacje czy dana osoba jest palaczem czy nie. Kolejną kolumna jest cyfra, zawiera kolejne liczby od 0 do 9, macierz w której znajduje się macierz 16 wartośći z przedziału 1 do 15, jest wymiarów 4x4. W ostatniej zmiennej listy znajduje się wektor z pierwszymi słowami "Pana Tadeusza".
+
+```{r}
+lista <- list(palenie = c(F,T,T,F,F,T,F),
+              cyfry = 0:9,
+              macierz = matrix(sample(1:5,16,replace = T),4,4),
+              tekst = c("Litwo", "ojczyzno", "moja", "ty",
+                         "jestes", "jak", "zdrowie"))
+
+lista[[4]]
+lista[["cyfry"]]
+lista$macierz
+```
+
+## zadanie 2.5
+Wykorzystałem zbiór danych gapminder, oraz bibliotekę dplyr. Zmieniłem nazwy kolumn z year, gdpPercap na rok i PKb. Następnie do zmiennje kraje_1962 odfitrowałem takie dane takich krajów które: nie były położone w Afryce, i ich PKB nie przekroczyło 750$ w 1962 roku.
+
+W 1962 roku PKB mniejsze niż 750$ miały następujące kraje (spoza Afryki):
+```{r}
+library(gapminder)
+library(dplyr)
+(gapminder <- gapminder %>%
+  rename(rok = year, PKB = gdpPercap))
+(kraje_1962 <- gapminder %>%
+  filter(rok == 1962, continent != 'Africa', PKB < 750) %>% 
+   select(country))
+  
+```
+
+## zadanie 2.7
+Przy użyciu metody group_by() pogrupowałem kraje według kontynentów, wybrałem takie dane które były tylko z 2007 roku a następnie obliczyłem średnią, odchylenie i medianę populacji w tak utworzonych grupach. Wyniki przedstawiłem w postaci dataframe'u.
+
+```{r}
+(continent_grouoped <- gapminder %>%
+   filter(rok == 2007) %>%
+    group_by(continent) %>%
+      summarize(srednia = mean(pop), odchylenie = sd(pop), mediana = median(pop)))
+```
+
+
+## Podpunkt 2
+  
+  Plik "budzety2005.csv" zawiera dane dotyczące budżetów gospodarstw domowych w 2005 roku. Rozpocznę od załadowania i odczytanie pliku w środowisku RStudio. Aby lepiej zrozumieć badany zestaw danych sprawdzam wielkości takie jak: liczba kolumn/wierszy, rodzaj danych w kolumnach, liczbę brakujących danych.
+
+```{r include=FALSE}
+library(dplyr)
+library(tidyr)
+```
+
+```{r cars, echo=TRUE}
+path <- getwd()
+setwd(path)
+budzety <- read.csv("budzety2005.csv")
+data <- as_tibble(budzety)
+str(data)
+```
+   
+   
+   Aby lepiej poznać kolumny z danymi kategorycznymi, wypisuję wszystkie unikalne wartości dla wszystkich kolumn o typie char.
+   
+```{r}
+data %>%
+  select(where(is.character)) %>%
+    lapply(unique)
+```
+```{r include=FALSE}
+data %>%
+  select(where(is.numeric)) %>%
+    summarise_each(list(mean = mean, median = median))
+```
+## 1 Hipoteza badawcza
+
+  Pierszwym problemem badawczym który mam zamiar podjąć jest sprawdzanie jaki wpływ ma miejsce zamieszkania na stosunek wykształcenia wśród kobiet i mężczyzn. Czy iloczyn liczby kobiet i mężczyzn z wyższym/zerowym wykształcenie na wsi różni się od tej wielkości w większych miastach.
+  
+```{r}
+h0_uni <- data %>% 
+  select(townsize, sex, educ) %>%
+    filter(educ == "university")
+
+h0_ned <- data %>% 
+  select(townsize, sex, educ) %>%
+    filter(educ == "no education")
+
+```
+  
+  Wyodrębniłem liczbę kobiet i mężczyzn w zależności od miejsca zamieszkania z wyższym wykształceniem
+  
+```{r echo=TRUE}
+(h0_uni1 <- h0_uni %>% 
+  group_by(across(all_of("townsize"))) %>% 
+    count(sex))
+```
+
+  oraz bez wykształcenia
+  
+```{r echo=TRUE}
+(h0_ned1 <- h0_ned %>% 
+  group_by(across(all_of("townsize"))) %>% 
+    count(sex))
+```
+
+  Na poniższym wykresie wyraźnie widoczne jest fakt, iż w każdej z wydzielonych wielkości miast, liczba kobiet z wyższym wykształceniem jest większa od liczby mężczyzn.
+```{r, out.width='100%'}
+
+h0_uni$townsize <- factor(h0_uni$townsize)
+levels(h0_uni$townsize) <- c('village', '<20k', '20k-100k', '100k-200k', '200k-500k', '>500k')
+
+barplot(table(h0_uni$sex, h0_uni$townsize),
+        main = "Wyższe wykształcenie od wielkości miasta i płci",
+        xlab = "Wielkość miasta", ylab = "Liczba osób",
+        col = c("red", "darkblue"),
+        beside = TRUE,
+        cex.main=0.8,
+        cex.axis=0.8,
+        cex.sub=0.8,
+        cex.lab=0.8)
+legend('topleft', legend=c("Female", "Male"), cex=0.8, fill=c("red", "darkblue"))
+
+```
+
+  Co ciekawe, sytuacja to powtarza się także w drugim, skrajnym przypadku, braku wykształcenia. Ze względu na różnicę w ilości ludzi mieszkających na wsi i w miastach, wykres możę być nieco mylący. Nadal jednak zauważyć możemy, że w każdej z wydzielonych grup, występuje więcej kobiet niż mężczyzn wśród osób które nie posiadają żadnego wykształcenia.
+
+```{r echo=FALSE, out.width='100%'}
+h0_ned$townsize <- factor(h0_ned$townsize)
+levels(h0_ned$townsize) <- c('village', '<20k', '20k-100k', '100k-200k', '200k-500k', '>500k')
+
+barplot(table(h0_ned$sex, h0_ned$townsize),
+        main = "Brak wykształcenie od wielkości miasta i płci",
+        xlab = "Wielkość miasta", ylab = "Liczba osób",
+        col = c("red", "darkblue"),
+        beside = TRUE,
+        cex.main=0.8,
+        cex.axis=0.8,
+        cex.sub=0.8,
+        cex.lab=0.8)
+legend('topleft', legend=c("Female", "Male"), cex=0.8, fill=c("red", "darkblue"))
+```
+
+
+```{r}
+
+(d <- h0_uni %>%
+  group_by(across(all_of("sex"))) %>%
+    count(townsize)) 
+(dm <- d %>%
+  filter(sex=='male'))
+(df <- d %>%
+    filter(sex=='female '))
+print(round(((df$n/dm$n)-1)*100, 1))
+```
+
+Na wsi liczba kobiet z wyższym wykształceniem jest tylko 15% wyższa. Liczba ta jednak wyraźnie wzrasta wraz z każdą kolejną grupą i w miastach z populacją powyżej 200 tyś. Jest ponad dwa razy więcej kobiet niż mężczyzn z wyższym wykształceniem. 
+
+
+## 3 Hipoteza badawcza
+
+Sprawdzę wysykość kosztów mieszkania wśród studentów w różnych województwach. Zauważyłem że duża liczba obserwacji, oznaczoncyh jako student nie miała jeszcze nawet 18 lat, dlatego też odrzucam wszytkie osoby których wiek jest mniejszy niż 18 lat. Założyłem, że w ekstremalnym przypadku, ktoś po liceum rozpoczynający studia może mieć 18 lat. Dalsze badanie będę prowadził na tym podzbiorze danych. Zakładam także że kolumna bills zawiera miesięczną kwotę przeznaczaną na mieszkanie.
+
+```{r}
+h2 <- budzety %>% 
+  select(student, bills, wojregion, age) %>%
+    filter(student == 1 & age > 18)
+str(h2)
+```
+```{r}
+h2 %>% 
+  filter(bills == 0) %>%
+    count()
+```
+Aż 60 osób z badanych 1051 nie wykazało żadnych kosztów mieszkaniowych w badanym miesiącu. Według mnie są to przypadki, w których dana osoba posiada własne mieszkanie, lub co bardziej prawdopodobne mieszka w domu/mieszkaniu z rodzicami, dojeżdża na uczelnie i nie ponosi żadnych kosztów mieszkaniowych.
+
+```{r}
+h2 <- h2 %>%
+  filter(bills != 0)
+
+count <- h2 %>%
+  count(wojregion)
+
+h2_reg <- h2 %>%
+  group_by(wojregion) %>%
+    summarize(Mean = mean(bills, na.rm=TRUE), Median = median(bills, na.rm=TRUE)) %>%
+      arrange(desc(Mean))
+
+h2_reg$Count = count$n
+h2_reg
+```
+
+Średnio na mieszkanie najwięcej wydają studenci z województwa Śląskiego (443.91 zł) i Mazowieckie (438.90 zł). 
+Natomiast najmniej wydają studenci w Lubsukim (306.41 zł) i Małopolsce (297.94 zł), ponadto najwięcej osób, aż 156, zadeklarowanych jest jako studenci w województwie Świętokrzyskim, jest 4 razy więcej osób niż w Małopolsce.
+
+
+## 4 Hipoteza badawcza
+
+W ostatniej hipotezie chcę sprawdzić ile przysłowiowo "zostaje na koniec miesiąca" przeciętnemu studentowi. W przypadku gdy dana osoba nie wykazuj żadnego przychodu, do swoich rozważań będę brał średnią kwotę przychodu przypadającą na jedną osobą w danym gospodartstwie domowym.
+
+
+```{r}
+h4 <- budzety %>% 
+  select(student, bills, wojregion, age, totinc_data, totinc_data_hh, numpHH, totexpGUS) %>%
+    filter(student == 1 & age > 18) %>%
+      select(-c(student))
+
+h4$avgInc <- h4$totinc_data_hh/h4$numpHH
+h4$avgExp <- h4$totexpGUS/h4$numpHH
+
+h4 <- h4 %>%
+  mutate(income = case_when((totinc_data == 0) ~ avgInc, TRUE ~ totinc_data))
+
+h4 <- h4 %>% 
+  mutate(endOfMonth = income - (bills + avgExp)) %>%
+    arrange(desc(endOfMonth))
+
+head(h4)
+(result <- h4 %>% 
+  group_by(wojregion) %>%
+    summarize(Mean = mean(endOfMonth, na.rm=TRUE), Median = median(endOfMonth, na.rm=TRUE)) %>%
+      arrange(Mean))
+
+mean(result$Mean)
+```
+
+Obliczyłem także średnie wydatki przypadające na osobę w gospodarstwie domowym, prawdopodobnie nie jest to wartość rzeczywista, ponieważ większość studentów wydaje mniej miesięcznie niż ich rodzice, ale nie miałem pomysłu jak inaczej rozwiązać ten problem.
+  Średnio najbiedniejsi są studenci z województwa małopolskiego, natomiast najmniej stratni są osoby studiujący w województwie Warmińsko-mazurskim.
+  
+Najważniejszym jest jednak fakt, że w każdym województwie przeciętny student na koniec miesiąca "ma" w portfelu -595zł. Uważam że fakt ten może mieć jedną z trzech przyczyn:
+1. Studenci pracują przez wakacje, w roku akademickim, nie zarabiają i wykazują jedynie wydatki. Żyją z odłożonych pieniędzy
+2. Studenci utrzymują dodatkową pracę, w której nie uzyskują większych przychodów. Żyją z odłożonych pieniędzy i wsparcia od rodziców.
+3. Są zadłużeni i żyją z pożyczonych pieniędzy licząc na spłacenie długów po zakończeniu studiów.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
